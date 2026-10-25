@@ -41,6 +41,15 @@
 
 Cuando se requiera pasar de la versión de demostración comercial a la operación con empresas reales en producción, se activarán las siguientes fases:
 
+### 🔐 Fase Frontend: Filtrado Dinámico de Navegación y Vistas por Rol
+- [ ] **Filtrado del Menú Lateral (`Layout.tsx`)**: Ocultar/mostrar módulos en tiempo real según el rol del usuario conectado:
+  - **Administrador**: Acceso completo a todas las secciones (Dashboard, Ventas, POS, Productos, Inventario, Clientes, Caja, Facturas, Reportes, Usuarios, Roles, Auditoría, Configuración).
+  - **Cajero**: Acceso restringido a Punto de Venta (POS), Ventas, Clientes, Caja y Facturas (ocultando Inventario, Reportes y Administración).
+  - **Inventario**: Acceso restringido a Catálogo de Productos, Control de Inventario/Kardex y Reportes (ocultando Caja, Ventas y Administración).
+- [ ] **Selector rápido de perfil en Login**: Botones de acceso directo (Carlos - Admin, María - Cajera, Juan - Inventario) para que en presentaciones a clientes se pueda alternar de rol al instante.
+- [ ] **Header y Perfil reactivos**: Mostrar en la barra superior el avatar, nombre y badge del rol del usuario que inició sesión en lugar del valor estático actual.
+- [ ] **Guards de rutas en `App.tsx`**: Redirección automática si un usuario sin permisos intenta acceder a una URL o vista restringida.
+
 ### 🧩 Fase 2: Catálogo de Productos, Categorías y Precios
 - [ ] Migración `categories` (nombre, slug, descripción, `company_id`).
 - [ ] Migración `products` (nombre, SKU único por empresa, código de barras, categoría, precio de venta, costo, stock mínimo, impuesto, unidad de medida, `company_id`).
