@@ -1,0 +1,55 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zentry-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_DATABASE:-zentry_pos}
+      POSTGRES_USER: ${DB_USERNAME:-zentry_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-secret123}
+    ports:
+      - "${FORWARD_DB_PORT:-5432}:5432"
+    volumes:
+      - zentry-pgdata:/var/lib/postgresql/data
+    networks:
+      - zentry-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USERNAME:-zentry_user} -d ${DB_DATABASE:-zentry_pos}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zentry-backend
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_ENV: ${APP_ENV:-local}
+      APP_KEY: ${APP_KEY}
+      APP_DEBUG: ${APP_DEBUG:-true}
+      APP_URL: ${APP_URL:-http://localhost:8000}
+      DB_CONNECTION: pgsql
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_DATABASE: ${DB_DATABASE:-zentry_pos}
+      DB_USERNAME: ${DB_USERNAME:-zentry_user}
+      DB_PASSWORD: ${DB_PASSWORD:-secret123}
+    ports:
+      - "${FORWARD_BACKEND_PORT:-8000}:80"
+    volumes:
+      - ./backend:/var/www/html
+    networks:
+      - zentry-network
+
+networks:
+  zentry-network:
+    driver: bridge
+
+volumes:
+  zentry-pgdata:
+    driver: local
