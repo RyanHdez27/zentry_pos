@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { AlertCircle, Eye, EyeOff, Lock, Mail, Zap } from 'lucide-react';
+import { AlertCircle, Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { authApi } from '../services/api';
 
 interface LoginProps {
@@ -8,8 +8,8 @@ interface LoginProps {
 
 export default function Login({ onLogin }: LoginProps) {
   const [showPassword, setShowPassword] = useState(false);
-  const [email, setEmail] = useState('carlos@zentrypos.com');
-  const [password, setPassword] = useState('password123');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [remember, setRemember] = useState(true);
   const [loading, setLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -26,19 +26,10 @@ export default function Login({ onLogin }: LoginProps) {
       // Si la API responde con un error de validación o credenciales de un servidor activo
       if (err?.status === 422 || err?.status === 403 || err?.status === 401) {
         setErrorMessage(err.message || 'Credenciales inválidas');
-      } else {
-        // En entornos estáticos como GitHub Pages o preview sin backend encendido:
-        // Carga transparente del modo demo comercial
-        console.info('Entorno estático detectado, iniciando modo demo interactivo...');
-        onLogin();
-      }
+      } else setErrorMessage('No fue posible conectar con el servidor. Intenta de nuevo.');
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleDemoBypass = () => {
-    onLogin();
   };
 
   return (
@@ -104,13 +95,6 @@ export default function Login({ onLogin }: LoginProps) {
                 <AlertCircle size={15} className="shrink-0 text-red-500" />
                 <span>{errorMessage}</span>
               </div>
-              <button
-                type="button"
-                onClick={handleDemoBypass}
-                className="self-end text-xs font-semibold text-blue-600 hover:text-blue-800 underline cursor-pointer"
-              >
-                Ingresar en modo Demo local &rarr;
-              </button>
             </div>
           )}
 
@@ -180,14 +164,6 @@ export default function Login({ onLogin }: LoginProps) {
               {loading ? 'Iniciando sesión...' : 'Iniciar sesión'}
             </button>
 
-            <button
-              type="button"
-              onClick={handleDemoBypass}
-              className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium text-sm rounded-lg transition-all duration-150 flex items-center justify-center gap-2 cursor-pointer"
-            >
-              <Zap size={16} className="text-amber-500" />
-              Explorar Demo Interactivo
-            </button>
           </form>
 
           <p className="text-center text-xs text-slate-400 mt-8">

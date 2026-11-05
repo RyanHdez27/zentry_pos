@@ -8,6 +8,8 @@ use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
@@ -53,10 +55,16 @@ class AuthController extends Controller
                 'company' => $user->company ? [
                     'id' => $user->company->id,
                     'name' => $user->company->name,
+                    'legal_name' => $user->company->legal_name,
                     'tax_id' => $user->company->tax_id,
+                    'email' => $user->company->email,
+                    'phone' => $user->company->phone,
+                    'address' => $user->company->address,
+                    'logo_path' => $user->company->logo_path,
                     'currency' => $user->company->currency,
                     'default_tax_rate' => $user->company->default_tax_rate,
                     'invoice_prefix' => $user->company->invoice_prefix,
+                    'modules' => $user->company->modules ?? [],
                 ] : null,
             ],
         ]);
@@ -84,13 +92,46 @@ class AuthController extends Controller
                 'company' => $user->company ? [
                     'id' => $user->company->id,
                     'name' => $user->company->name,
+                    'legal_name' => $user->company->legal_name,
                     'tax_id' => $user->company->tax_id,
+                    'email' => $user->company->email,
+                    'phone' => $user->company->phone,
+                    'address' => $user->company->address,
+                    'logo_path' => $user->company->logo_path,
                     'currency' => $user->company->currency,
                     'default_tax_rate' => $user->company->default_tax_rate,
                     'invoice_prefix' => $user->company->invoice_prefix,
+                    'modules' => $user->company->modules ?? [],
                 ] : null,
             ],
         ]);
+    }
+
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'email', 'max:255', Rule::unique('users', 'email')->ignore($user->id)],
+            'phone' => ['nullable', 'string', 'max:50'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+        ]);
+
+        if ($request->hasFile('avatar')) {
+            $oldAvatar = $user->avatar;
+            $data['avatar'] = $request->file('avatar')->store('avatars', 'public');
+            if ($oldAvatar && ! str_starts_with($oldAvatar, 'http')) {
+                Storage::disk('public')->delete($oldAvatar);
+            }
+        }
+
+        $user->update($data);
+        $user->refresh();
+
+        return response()->json(['success' => true, 'message' => 'Perfil actualizado.', 'data' => [
+            'id' => $user->id, 'name' => $user->name, 'email' => $user->email,
+            'role' => $user->role, 'status' => $user->status, 'avatar' => $user->avatar, 'phone' => $user->phone,
+        ]]);
     }
 
     /**

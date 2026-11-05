@@ -48,3 +48,13 @@ body {
 .sidebar-scroll::-webkit-scrollbar {
   display: none;
 }
+
+@media print {
+  @page { size: A4 portrait; margin: 14mm; }
+  html, body, #root, #root > div, #root main { height: auto !important; overflow: visible !important; }
+  body * { visibility: hidden; }
+  body { background: #fff !important; color: #0f172a !important; }
+  .screen-report { display: none !important; }
+  .print-report, .print-report * { visibility: visible; }
+  .print-report { display: block !important; position: absolute; left: 0; top: 0; width: 100%; }
+}

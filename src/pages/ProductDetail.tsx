@@ -1,16 +1,66 @@
-import { useState } from 'react';
-import { ChevronLeft, Package, Edit, Trash2 } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { ChevronLeft, Package, Edit, Trash2, Loader2 } from 'lucide-react';
 import { products, inventoryMovements, fmt } from '../data/demo';
+import { productApi, inventoryApi, type Product, type InventoryMovement } from '../services/api';
 
 interface ProductDetailProps {
+  productId?: number | null;
   onBack: () => void;
 }
 
-export default function ProductDetail({ onBack }: ProductDetailProps) {
-  const [tab, setTab] = useState('info');
-  const product = products[0];
+export default function ProductDetail({ productId, onBack }: ProductDetailProps) {
+  const [tab, setTab] = useState('Información');
+  const [productData, setProductData] = useState<Product | null>(null);
+  const [movementsData, setMovementsData] = useState<InventoryMovement[]>([]);
+  const [loading, setLoading] = useState<boolean>(Boolean(productId));
+
+  useEffect(() => {
+    if (!productId) return;
+    setLoading(true);
+    Promise.all([
+      productApi.get(productId),
+      inventoryApi.movements({ product_id: productId, per_page: 10 }).catch(() => null),
+    ])
+      .then(([prodRes, movRes]) => {
+        if (prodRes.data) {
+          setProductData(prodRes.data);
+        }
+        if (movRes?.data) {
+          setMovementsData(movRes.data);
+        }
+      })
+      .catch(() => {
+        // En caso de error o preview estático, mantiene fallback
+      })
+      .finally(() => setLoading(false));
+  }, [productId]);
+
+  const fallbackProduct = products[0];
+
+  const product = productData ? {
+    name: productData.name,
+    sku: productData.sku || '—',
+    barcode: productData.barcode || '—',
+    category: productData.category?.name || 'General',
+    status: Number(productData.stock) <= 0 ? 'out' : Number(productData.stock) <= Number(productData.stock_min) ? 'low' : 'ok',
+    price: Number(productData.price),
+    cost: Number(productData.cost),
+    stock: Number(productData.stock),
+    minStock: Number(productData.stock_min),
+    tax: Number(productData.tax_rate),
+    unit: productData.unit || 'unidad',
+  } : fallbackProduct;
 
   const tabs = ['Información', 'Inventario', 'Movimientos', 'Ventas'];
+
+  if (loading) {
+    return (
+      <div className="p-6 flex items-center justify-center py-20 text-slate-400">
+        <Loader2 size={24} className="animate-spin mr-2" />
+        <span className="text-sm">Cargando producto...</span>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-5 max-w-[1400px]">
@@ -122,21 +172,54 @@ export default function ProductDetail({ onBack }: ProductDetailProps) {
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200">
-                  {['Fecha', 'Tipo', 'Cantidad', 'Stock', 'Usuario'].map((h) => (
+                  {['Fecha / Hora', 'Tipo', 'Cantidad', 'Stock resultante', 'Usuario', 'Motivo'].map((h) => (
                     <th key={h} className="pb-3 text-left text-xs font-semibold text-slate-500 uppercase tracking-wide">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
-                {inventoryMovements.filter((m) => m.product === product.name || true).slice(0, 5).map((m, i) => (
-                  <tr key={i} className="hover:bg-slate-50">
-                    <td className="py-3.5 text-sm text-slate-600">{m.date} {m.time}</td>
-                    <td className="py-3.5"><span className={`text-xs px-2.5 py-1 rounded-full font-medium ${m.type === 'Venta' ? 'bg-blue-50 text-blue-700' : m.type === 'Entrada' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{m.type}</span></td>
-                    <td className="py-3.5"><span className={`text-sm font-bold ${m.qty > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{m.qty > 0 ? '+' : ''}{m.qty}</span></td>
-                    <td className="py-3.5 text-sm text-slate-800 font-semibold">{m.after}</td>
-                    <td className="py-3.5 text-sm text-slate-600">{m.user}</td>
-                  </tr>
-                ))}
+                {movementsData.length > 0 ? (
+                  movementsData.map((m) => {
+                    const qtyNum = Number(m.quantity);
+                    const d = new Date(m.created_at);
+                    const dateStr = d.toLocaleDateString('es-CO');
+                    const timeStr = d.toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' });
+
+                    return (
+                      <tr key={m.id} className="hover:bg-slate-50">
+                        <td className="py-3.5 text-sm text-slate-600">{dateStr} {timeStr}</td>
+                        <td className="py-3.5">
+                          <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${
+                            m.type === 'entry' ? 'bg-emerald-50 text-emerald-700' :
+                            m.type === 'sale' ? 'bg-blue-50 text-blue-700' :
+                            m.type === 'damage' ? 'bg-red-50 text-red-700' : 'bg-amber-50 text-amber-700'
+                          }`}>
+                            {m.type === 'entry' ? 'Entrada' : m.type === 'sale' ? 'Venta' : m.type === 'damage' ? 'Daño' : 'Ajuste'}
+                          </span>
+                        </td>
+                        <td className="py-3.5">
+                          <span className={`text-sm font-bold ${qtyNum > 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                            {qtyNum > 0 ? `+${qtyNum}` : qtyNum}
+                          </span>
+                        </td>
+                        <td className="py-3.5 text-sm text-slate-800 font-semibold">{Number(m.current_stock)}</td>
+                        <td className="py-3.5 text-sm text-slate-600">{m.user?.name ?? 'Sistema'}</td>
+                        <td className="py-3.5 text-sm text-slate-500">{m.reason ?? '—'}</td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  inventoryMovements.filter((m) => m.product === product.name || true).slice(0, 5).map((m, i) => (
+                    <tr key={i} className="hover:bg-slate-50">
+                      <td className="py-3.5 text-sm text-slate-600">{m.date} {m.time}</td>
+                      <td className="py-3.5"><span className={`text-xs px-2.5 py-1 rounded-full font-medium ${m.type === 'Venta' ? 'bg-blue-50 text-blue-700' : m.type === 'Entrada' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'}`}>{m.type}</span></td>
+                      <td className="py-3.5"><span className={`text-sm font-bold ${m.qty > 0 ? 'text-emerald-600' : 'text-red-500'}`}>{m.qty > 0 ? '+' : ''}{m.qty}</span></td>
+                      <td className="py-3.5 text-sm text-slate-800 font-semibold">{m.after}</td>
+                      <td className="py-3.5 text-sm text-slate-600">{m.user}</td>
+                      <td className="py-3.5 text-sm text-slate-500">{m.reason}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           )}

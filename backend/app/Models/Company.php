@@ -17,11 +17,13 @@ class Company extends Model
         'email',
         'phone',
         'address',
+        'logo_path',
         'currency',
         'default_tax_rate',
         'invoice_prefix',
         'next_invoice_number',
         'status',
+        'modules',
     ];
 
     protected function casts(): array
@@ -29,11 +31,22 @@ class Company extends Model
         return [
             'default_tax_rate' => 'decimal:2',
             'next_invoice_number' => 'integer',
+            'modules' => 'array',
         ];
     }
 
     public function users(): HasMany
     {
         return $this->hasMany(User::class);
+    }
+
+    public function cashSessions(): HasMany
+    {
+        return $this->hasMany(CashSession::class);
+    }
+
+    public function sales(): HasMany
+    {
+        return $this->hasMany(Sale::class);
     }
 }

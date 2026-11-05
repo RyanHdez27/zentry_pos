@@ -30,6 +30,7 @@ services:
         condition: service_healthy
     environment:
       APP_ENV: ${APP_ENV:-local}
+      APP_TIMEZONE: ${APP_TIMEZONE:-America/Bogota}
       APP_KEY: ${APP_KEY}
       APP_DEBUG: ${APP_DEBUG:-true}
       APP_URL: ${APP_URL:-http://localhost:8000}
